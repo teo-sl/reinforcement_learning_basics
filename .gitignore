@@ -1,1 +1,4 @@
 /.ipynb_checkpoints
+.DS_Store
+baselines_wrappers/__pycache__
+__pycache__

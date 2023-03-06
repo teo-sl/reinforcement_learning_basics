@@ -51,3 +51,23 @@ Inoltre, all'inizio di ogni episodio si possono effettuare al massimo 30 azioni 
 
 k = 4
 
+<hr>
+
+### 4. Install package (for colab)
+setup.py file in the package directory
+
+    from setuptools import setup, find_packages
+
+    setup(
+        name='my_package',
+        version='0.1',
+        packages=find_packages(),
+    )
+
+run this command
+
+    python setup.py bdist_wheel
+  
+A directory named dist will be created. Use the .whl file in the dist directory to install the package.
+
+    pip install dist/my_package-0.1-py3-none-any.whl

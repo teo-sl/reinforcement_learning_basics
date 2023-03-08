@@ -3,3 +3,6 @@
 baselines_wrappers/__pycache__
 __pycache__
 snake/test.ipynb
+snake/.ipynb_checkpoints
+snake/logs
+saved_models

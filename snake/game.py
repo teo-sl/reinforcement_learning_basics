@@ -14,10 +14,10 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GREEN = (0, 255, 0)
  
-DIS_WIDTH = 200
-DIS_HEIGHT = 200
+DIS_WIDTH = 600
+DIS_HEIGHT = 600
 
-SNAKE_BLOCK = 10
+SNAKE_BLOCK = 10.0
 
 SNAKE_SPEED = 100
 
@@ -73,8 +73,8 @@ class SnakeGame():
         self.snake_list = []
         self.length_of_snake = 1
 
-        self.foodx = round(random.randrange(0, DIS_WIDTH - SNAKE_BLOCK) / 10.0) * 10.0
-        self.foody = round(random.randrange(0, DIS_HEIGHT - SNAKE_BLOCK) / 10.0) * 10.0
+        self.foodx = round(random.randrange(0, DIS_WIDTH - SNAKE_BLOCK) / SNAKE_BLOCK) * SNAKE_BLOCK
+        self.foody = round(random.randrange(0, DIS_HEIGHT - SNAKE_BLOCK) / SNAKE_BLOCK) * SNAKE_BLOCK
 
         return self.get_state()
 
@@ -98,7 +98,10 @@ class SnakeGame():
         dir_dx = 1 if self.direction == ACTIONS['RIGHT'] else 0
         
         return np.array(
-            [
+            [   
+                self.foodx,
+                self.foody,
+
                 self.x1,
                 self.y1,
 
@@ -181,14 +184,14 @@ class SnakeGame():
 
         pygame.draw.rect(self.dis, GREEN, [self.foodx, self.foody, SNAKE_BLOCK, SNAKE_BLOCK])
 
-        snake_Head = []
-        snake_Head.append(self.x1)
-        snake_Head.append(self.y1)
-        self.snake_list.append(snake_Head)
+        snake_head = []
+        snake_head.append(self.x1)
+        snake_head.append(self.y1)
+        self.snake_list.append(snake_head)
         if len(self.snake_list) > self.length_of_snake:
             del self.snake_list[0]  
         for x in self.snake_list[:-1]:
-            if x == snake_Head or self.frame_iteration > 100 * len(self.snake_list)**2:
+            if x == snake_head or self.frame_iteration > 100 * len(self.snake_list)**2:
                 self.game_close = True
         
         self.draw_snake()
@@ -205,6 +208,7 @@ class SnakeGame():
 
         if self.game_close:
             reward = -REWARD_UNIT
+
         infos = {
             'score': self.length_of_snake,
         }

@@ -188,7 +188,7 @@ class SnakeGame():
         if len(self.snake_list) > self.length_of_snake:
             del self.snake_list[0]  
         for x in self.snake_list[:-1]:
-            if x == snake_Head or self.frame_iteration > 100 * len(self.snake_list):
+            if x == snake_Head or self.frame_iteration > 100 * len(self.snake_list)**2:
                 self.game_close = True
         
         self.draw_snake()

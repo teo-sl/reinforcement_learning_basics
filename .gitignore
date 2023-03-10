@@ -6,3 +6,6 @@ snake/test.ipynb
 snake/.ipynb_checkpoints
 snake/logs
 saved_models
+car/__pycache__
+car/.ipynb_checkpoints
+car/imgs

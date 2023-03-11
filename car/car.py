@@ -66,7 +66,7 @@ WIN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Racing Game!")
 
 
-FPS = 60
+FPS = 10
 
 
 def draw(win, images, player_car):
@@ -101,8 +101,8 @@ class AbstractCar:
     def __init__(self, max_vel, rotation_vel):
         self.img = self.IMG
         self.max_vel = max_vel
-        self.vel = 1
-        self.rotation_vel = 32
+        self.vel = 0
+        self.rotation_vel = 8
         self.angle = 0
         self.x, self.y = self.START_POS
         self.acceleration = 0.1
@@ -118,7 +118,6 @@ class AbstractCar:
         self.radars = []
         for radar_angle in (-180,-135,-90,-45, 0, 45, 90,135, 180,225, 270,315, 360):
             self.radar(radar_angle)
-        #print(self.radars)
         blit_rotate_center(win, self.img, (self.x, self.y), self.angle)
         
 
@@ -128,6 +127,7 @@ class AbstractCar:
 
     def move_backward(self):
         self.vel = max(self.vel - self.acceleration, -self.max_vel/2)
+        self.vel = 0
         self.move()
 
     def move(self):
@@ -156,7 +156,7 @@ class AbstractCar:
         x = int(x_car)
         y = int(y_car)
         try:
-            while not WIN.get_at((x, y)) == pygame.Color(0, 0, 0, 255) and length < 600:
+            while not WIN.get_at((x, y)) == pygame.Color(0, 0, 0, 255) and length < 200:
                 length += 1
                 x = int(self.x +
                         math.cos(math.radians(self.angle + radar_angle)) * length)
@@ -215,6 +215,7 @@ def move_player(player_car):
 
 class CarEnv():
     def __init__(self,player_car=None):
+        
         self.player_car = PlayerCar(max_vel = 8, rotation_vel = 8) if player_car == None else player_car
         self.images = [(GRASS, (0, 0)), (TRACK, (0, 0)),
           (FINISH, FINISH_POSITION), (TRACK_BORDER, (0, 0)),
@@ -231,6 +232,8 @@ class CarEnv():
         return random.randint(0,len(ACTIONS)-1)
 
     def reset(self):
+        self.n_goals_reached = 0
+        self.n_iter = 0
         self.player_car.reset()
         self.run = True
         self.last_goal_reached =  len(ORDER)-1
@@ -274,6 +277,7 @@ class CarEnv():
             
          
     def step(self,action):
+        self.n_iter += 1
         if self.run == False:
             raise Exception("Game is over")
         reward = 0
@@ -283,16 +287,20 @@ class CarEnv():
         old_x = self.player_car.x
         old_y = self.player_car.y
         
+        T = 1
         if action == ACTIONS["LEFT"]:
             self.player_car.rotate(left=True)
         if action == ACTIONS["RIGHT"]:
             self.player_car.rotate(right=True)
         if action == ACTIONS["UP"]:
             self.player_car.move_forward()
+ 
         if action == ACTIONS["DOWN"]:
             self.player_car.move_backward()
+   
         if  action== ACTIONS["NOOP"]:
             self.player_car.reduce_speed()
+
 
         self.player_car.draw(WIN)
 
@@ -309,10 +317,10 @@ class CarEnv():
         if goal_collided is not None and goal_collided.centroid() != ORDER[self.last_goal_reached]:
             reward = REWARD_UNIT
             self.last_goal_reached = (self.last_goal_reached+1)%len(GOALS_MASK_COMPONENTS)
-            print(self.last_goal_reached)
+            self.n_goals_reached += 1
 
-        if self.player_car.collide(TRACK_BORDER_MASK) != None:
+        if self.player_car.collide(TRACK_BORDER_MASK) != None or self.n_iter > 1_000 * (self.n_goals_reached+1):
             reward = -REWARD_UNIT
             self.run = False
         
-        return self.get_state(), reward, self.run
+        return self.get_state(), reward, not self.run

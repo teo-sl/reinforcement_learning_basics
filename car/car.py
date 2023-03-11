@@ -9,24 +9,57 @@ RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 
-ORDER = [
-    (173, 118),
-    (62, 188),
-    (61, 371),
-    (134, 554),
-    (290, 712),
-    (407, 555),
-    (590, 528),
-    (617, 710),
-    (739, 555),
-    (683, 366),
-    (426, 354),
-    (570, 261),
-    (730, 101),
-    (501, 76),
-    (283, 131),
-    (231, 411)
-]
+ORDER = [(176, 144),
+ (161, 93),
+ (115, 74),
+ (69, 101),
+ (61, 147),
+ (60, 216),
+ (61, 302),
+ (60, 400),
+ (64, 477),
+ (109, 529),
+ (196, 618),
+ (303, 722),
+ (376, 724),
+ (409, 665),
+ (406, 576),
+ (425, 513),
+ (478, 481),
+ (547, 486),
+ (596, 539),
+ (601, 613),
+ (608, 697),
+ (644, 727),
+ (691, 729),
+ (732, 696),
+ (738, 612),
+ (744, 452),
+ (737, 404),
+ (708, 372),
+ (670, 364),
+ (545, 365),
+ (434, 360),
+ (402, 316),
+ (435, 265),
+ (514, 262),
+ (659, 260),
+ (726, 241),
+ (741, 178),
+ (737, 118),
+ (704, 79),
+ (646, 76),
+ (535, 77),
+ (411, 75),
+ (339, 75),
+ (295, 93),
+ (278, 145),
+ (280, 228),
+ (281, 330),
+ (271, 389),
+ (227, 411),
+ (177, 374),
+ (178, 285)]
 
 ACTIONS =  {
     "UP" : 0,
@@ -50,9 +83,9 @@ GOALS = scale_image(pygame.image.load("imgs/goals.png"), 0.9)
 GOALS_MASK = pygame.mask.from_surface(GOALS)
 GOALS_MASK_COMPONENTS = GOALS_MASK.connected_components()
 
-FINISH = pygame.image.load("imgs/finish.png")
-FINISH_MASK = pygame.mask.from_surface(FINISH)
-FINISH_POSITION = (130, 250)
+#FINISH = pygame.image.load("imgs/finish.png")
+#FINISH_MASK = pygame.mask.from_surface(FINISH)
+#FINISH_POSITION = (130, 250)
 
 RED_CAR = scale_image(pygame.image.load("imgs/red-car.png"), 0.55)
 GREEN_CAR = scale_image(pygame.image.load("imgs/green-car.png"), 0.55)
@@ -66,7 +99,7 @@ WIN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Racing Game!")
 
 
-FPS = 10
+FPS = 60
 
 
 def draw(win, images, player_car):
@@ -218,7 +251,7 @@ class CarEnv():
         
         self.player_car = PlayerCar(max_vel = 8, rotation_vel = 8) if player_car == None else player_car
         self.images = [(GRASS, (0, 0)), (TRACK, (0, 0)),
-          (FINISH, FINISH_POSITION), (TRACK_BORDER, (0, 0)),
+           (TRACK_BORDER, (0, 0)),
             (GOALS, (0, 0))]
         self.clock = pygame.time.Clock()
         self.player_car.draw(WIN)
@@ -248,10 +281,10 @@ class CarEnv():
         y = self.player_car.y
 
         return np.array([
-            x,
-            y,
-            next_goal_centroid[0],
-            next_goal_centroid[1],
+            x/TRACK.get_width(),
+            y/TRACK.get_height(),
+            next_goal_centroid[0]/TRACK.get_width(),
+            next_goal_centroid[1]/TRACK.get_height(),
             speed,
             angle,
             *[t[1] for t in self.player_car.radars],

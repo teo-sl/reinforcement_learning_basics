@@ -149,10 +149,10 @@ class AbstractCar:
 
     def draw(self, win):
         self.radars = []
-        [0, 45, 90, 135, 180, 225, 270, 315]
+        #[0, 45, 90, 135, 180, 225, 270, 315]
         #angle = 0
         #inc = 360/16
-        for angle in [0,70,80,90,100,110,180]:
+        for angle in [0, 22.4, 45, 67.5, 80, 90, 100, 112.5, 135, 157.5, 180, 202.5, 225, 247.5, 270, 292.5, 315, 337.5]:
             radar_angle = angle 
             self.radar(radar_angle)
         blit_rotate_center(win, (self.x, self.y), self.angle)
@@ -269,7 +269,7 @@ class CarEnv():
         self.reset()
 
     def get_observation_space_size(self):
-        return 11
+        return 22
     def get_action_space_size(self):
         return len(ACTIONS)
     def sample_from_action_space(self):

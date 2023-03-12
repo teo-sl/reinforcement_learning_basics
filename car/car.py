@@ -87,8 +87,8 @@ GOALS_MASK_COMPONENTS = GOALS_MASK.connected_components()
 #FINISH_MASK = pygame.mask.from_surface(FINISH)
 #FINISH_POSITION = (130, 250)
 
-RED_CAR = scale_image(pygame.image.load("imgs/red-car.png"), 0.55)
-GREEN_CAR = scale_image(pygame.image.load("imgs/green-car.png"), 0.55)
+#RED_CAR = scale_image(pygame.image.load("imgs/red-car.png"), 0.55)
+#GREEN_CAR = scale_image(pygame.image.load("imgs/green-car.png"), 0.55)
 
 
 WIDTH, HEIGHT = TRACK.get_width(), TRACK.get_height()
@@ -132,7 +132,7 @@ GOALS_MASK_COMPONENTS = order_goals_mask()
 
 class AbstractCar:
     def __init__(self, max_vel, rotation_vel):
-        self.img = self.IMG
+        #self.img = self.IMG
         self.max_vel = max_vel
         self.vel = 0
         self.rotation_vel = 8
@@ -149,9 +149,14 @@ class AbstractCar:
 
     def draw(self, win):
         self.radars = []
-        for radar_angle in (-180,-135,-90,-45, 0, 45, 90,135, 180,225, 270,315, 360):
+        #[0, 45, 90, 135, 180, 225, 270, 315]
+        angle = 0
+        inc = 360/8
+        while angle < 360:
+            radar_angle = angle 
             self.radar(radar_angle)
-        blit_rotate_center(win, self.img, (self.x, self.y), self.angle)
+            angle += inc
+        blit_rotate_center(win, (self.x, self.y), self.angle)
         
 
     def move_forward(self):
@@ -172,7 +177,9 @@ class AbstractCar:
         self.x -= horizontal
 
     def collide(self, mask, x=0, y=0):
-        car_mask = pygame.mask.from_surface(self.img)
+        circle = pygame.draw.circle(WIN, (255, 0, 0,0), (self.x, self.y), 3)
+        surf = WIN.subsurface(circle)
+        car_mask = pygame.mask.from_surface(surf)
         offset = (int(self.x - x), int(self.y - y))
         poi = mask.overlap(car_mask, offset)
         return poi
@@ -183,9 +190,10 @@ class AbstractCar:
         self.vel = 0
 
     def radar(self, radar_angle):
+        phi = radar_angle-self.angle
         length = 0
-        x_car = self.x+10
-        y_car = self.y+25
+        x_car = self.x
+        y_car = self.y
         x = int(x_car)
         y = int(y_car)
         try:
@@ -201,7 +209,11 @@ class AbstractCar:
         if True:
             pygame.draw.line(WIN, (225, 225, 225, 225), (x_car,y_car),
                             (x, y), 1)
-            pygame.draw.circle(WIN, (0, 225, 0, 0), (x, y), 3)
+            if phi == 90:
+                color = (255, 0, 0, 0)
+            else:
+                color = (0, 255,0, 0)
+            pygame.draw.circle(WIN, color, (x, y), 3)
 
         dist = int(
             math.sqrt(
@@ -215,7 +227,7 @@ class AbstractCar:
         
 
 class PlayerCar(AbstractCar):
-    IMG = RED_CAR
+    #IMG = RED_CAR
     START_POS = (180, 200)
 
     def reduce_speed(self):
@@ -258,7 +270,7 @@ class CarEnv():
         self.reset()
 
     def get_observation_space_size(self):
-        return 19
+        return 12
     def get_action_space_size(self):
         return len(ACTIONS)
     def sample_from_action_space(self):
@@ -281,10 +293,8 @@ class CarEnv():
         y = self.player_car.y
 
         return np.array([
-            x/TRACK.get_width(),
-            y/TRACK.get_height(),
-            next_goal_centroid[0]/TRACK.get_width(),
-            next_goal_centroid[1]/TRACK.get_height(),
+            (x-next_goal_centroid[0])/TRACK.get_width(),
+            (y-next_goal_centroid[1])/TRACK.get_height(),
             speed,
             angle,
             *[t[1] for t in self.player_car.radars],

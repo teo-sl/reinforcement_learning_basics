@@ -135,7 +135,7 @@ class AbstractCar:
         #self.img = self.IMG
         self.max_vel = max_vel
         self.vel = 0
-        self.rotation_vel = 8
+        self.rotation_vel = 4
         self.angle = 0
         self.x, self.y = self.START_POS
         self.acceleration = 0.1
@@ -149,13 +149,12 @@ class AbstractCar:
 
     def draw(self, win):
         self.radars = []
-        #[0, 45, 90, 135, 180, 225, 270, 315]
-        angle = 0
-        inc = 360/8
-        while angle < 360:
+        [0, 45, 90, 135, 180, 225, 270, 315]
+        #angle = 0
+        #inc = 360/16
+        for angle in [0,70,80,90,100,110,180]:
             radar_angle = angle 
             self.radar(radar_angle)
-            angle += inc
         blit_rotate_center(win, (self.x, self.y), self.angle)
         
 
@@ -209,7 +208,7 @@ class AbstractCar:
         if True:
             pygame.draw.line(WIN, (225, 225, 225, 225), (x_car,y_car),
                             (x, y), 1)
-            if phi == 90:
+            if radar_angle == 90:
                 color = (255, 0, 0, 0)
             else:
                 color = (0, 255,0, 0)
@@ -270,7 +269,7 @@ class CarEnv():
         self.reset()
 
     def get_observation_space_size(self):
-        return 12
+        return 11
     def get_action_space_size(self):
         return len(ACTIONS)
     def sample_from_action_space(self):
@@ -295,9 +294,9 @@ class CarEnv():
         return np.array([
             (x-next_goal_centroid[0])/TRACK.get_width(),
             (y-next_goal_centroid[1])/TRACK.get_height(),
-            speed,
-            angle,
-            *[t[1] for t in self.player_car.radars],
+            speed/8.0,
+            angle/360.0,
+            *[t[1]/200.0 for t in self.player_car.radars],
         ],dtype=np.float32)
 
 
@@ -306,31 +305,30 @@ class CarEnv():
         moved = False
 
         if keys[pygame.K_a]:
-            self.step(ACTIONS["LEFT"])
+            return self.step(ACTIONS["LEFT"])
         if keys[pygame.K_d]:
-            self.step(ACTIONS["RIGHT"])
+            return self.step(ACTIONS["RIGHT"])
         if keys[pygame.K_w]:
             moved = True
-            self.step(ACTIONS["UP"])
+            return self.step(ACTIONS["UP"])
         if keys[pygame.K_s]:
             moved = True
-            self.step(ACTIONS["DOWN"])
+            return self.step(ACTIONS["DOWN"])
         if not moved:
-            self.step(ACTIONS["NOOP"])
+            return self.step(ACTIONS["NOOP"])
             
          
     def step(self,action):
         self.n_iter += 1
         if self.run == False:
             raise Exception("Game is over")
-        reward = 0
-        self.clock.tick(FPS)
+        reward = 0.0
+        
         draw(WIN, self.images, self.player_car)
 
         old_x = self.player_car.x
         old_y = self.player_car.y
         
-        T = 1
         if action == ACTIONS["LEFT"]:
             self.player_car.rotate(left=True)
         if action == ACTIONS["RIGHT"]:
@@ -349,11 +347,11 @@ class CarEnv():
 
         next_goal = (self.last_goal_reached+1)%len(GOALS_MASK_COMPONENTS)
         next_goal_centroid = GOALS_MASK_COMPONENTS[next_goal].centroid()
-
-        if abs(self.player_car.x-next_goal_centroid[0])+abs(self.player_car.y-next_goal_centroid[1])<abs(old_x-next_goal_centroid[0])+abs(old_y-next_goal_centroid[1]):
-            reward = REWARD_UNIT/10
+        dist = -(abs(self.player_car.x-next_goal_centroid[0])+abs(self.player_car.y-next_goal_centroid[1]))+(abs(old_x-next_goal_centroid[0])+abs(old_y-next_goal_centroid[1]))
+        if dist > 0:
+            reward = dist / 8
         else:
-            reward = -REWARD_UNIT/10
+            reward = - 0.1 + dist / 8
         
         goal_collided = get_mask_components_collided(self.player_car)
 
@@ -365,5 +363,7 @@ class CarEnv():
         if self.player_car.collide(TRACK_BORDER_MASK) != None or self.n_iter > 1_000 * (self.n_goals_reached+1):
             reward = -REWARD_UNIT
             self.run = False
+
+        self.clock.tick(FPS)
         
         return self.get_state(), reward, not self.run

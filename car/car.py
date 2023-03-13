@@ -149,10 +149,7 @@ class AbstractCar:
 
     def draw(self, win):
         self.radars = []
-        #[0, 45, 90, 135, 180, 225, 270, 315]
-        #angle = 0
-        #inc = 360/16
-        for angle in [0, 22.4, 45, 67.5, 80, 90, 100, 112.5, 135, 157.5, 180, 202.5, 225, 247.5, 270, 292.5, 315, 337.5]:
+        for angle in [0,22.5,45,67.5,80,90,100,112.5,135,157.5,180]:
             radar_angle = angle 
             self.radar(radar_angle)
         blit_rotate_center(win, (self.x, self.y), self.angle)
@@ -189,14 +186,13 @@ class AbstractCar:
         self.vel = 0
 
     def radar(self, radar_angle):
-        phi = radar_angle-self.angle
         length = 0
         x_car = self.x
         y_car = self.y
         x = int(x_car)
         y = int(y_car)
         try:
-            while not WIN.get_at((x, y)) == pygame.Color(0, 0, 0, 255) and length < 200:
+            while not WIN.get_at((x, y)) == pygame.Color(0, 0, 0, 255) and length < 50:
                 length += 1
                 x = int(self.x +
                         math.cos(math.radians(self.angle + radar_angle)) * length)
@@ -269,13 +265,14 @@ class CarEnv():
         self.reset()
 
     def get_observation_space_size(self):
-        return 22
+        return 21
     def get_action_space_size(self):
         return len(ACTIONS)
     def sample_from_action_space(self):
         return random.randint(0,len(ACTIONS)-1)
 
     def reset(self):
+        self.n_no_consecutive_move = 0
         self.n_goals_reached = 0
         self.n_iter = 0
         self.player_car.reset()
@@ -291,12 +288,54 @@ class CarEnv():
         x = self.player_car.x
         y = self.player_car.y
 
+        phi = math.atan2(x-next_goal_centroid[0],y-next_goal_centroid[1])
+        phi = math.degrees(phi)
+        angle = (angle+360)%360
+        phi = (phi+360)%360
+
+        diff = (angle-phi+540)%360-180
+
+        if -5 <= diff <= 5:
+            go_left = 0
+            go_right = 0
+            go_straight = 1
+        elif diff < -5:
+            go_left = 1
+            go_right = 0
+            go_straight = 0
+        elif diff > 5:
+            go_left = 0
+            go_right = 1
+            go_straight = 0
+
+        dist_x = next_goal_centroid[0]-x
+        dist_y = next_goal_centroid[1]-y
+
+        if dist_x > 0:
+            is_left = 1
+            is_right = 0
+        else:
+            is_left = 0
+            is_right = 1
+        if dist_y > 0:
+            is_up = 0
+            is_down = 1
+        else:
+            is_up = 1
+            is_down = 0
+
         return np.array([
-            (x-next_goal_centroid[0])/TRACK.get_width(),
-            (y-next_goal_centroid[1])/TRACK.get_height(),
+            self.n_no_consecutive_move,
+            is_left,
+            is_right,
+            is_up,
+            is_down,
             speed/8.0,
             angle/360.0,
-            *[t[1]/200.0 for t in self.player_car.radars],
+            go_left,
+            go_straight,
+            go_right,
+            *[t[1]/50.0 for t in self.player_car.radars],
         ],dtype=np.float32)
 
 
@@ -320,6 +359,7 @@ class CarEnv():
          
     def step(self,action):
         self.n_iter += 1
+
         if self.run == False:
             raise Exception("Game is over")
         reward = 0.0
@@ -349,15 +389,26 @@ class CarEnv():
         next_goal_centroid = GOALS_MASK_COMPONENTS[next_goal].centroid()
         dist = -(abs(self.player_car.x-next_goal_centroid[0])+abs(self.player_car.y-next_goal_centroid[1]))+(abs(old_x-next_goal_centroid[0])+abs(old_y-next_goal_centroid[1]))
         if dist > 0:
-            reward = dist / 8
+            reward = dist / 8.0
+            self.n_no_consecutive_move = 0
+        elif self.player_car.x == old_x and self.player_car.y == old_y:
+            if self.n_no_consecutive_move > 20:
+                reward = -(self.n_no_consecutive_move-20)/10.0
+                self.n_no_consecutive_move += 1
+            else:
+                reward = 0.0
+                self.n_no_consecutive_move +=1
         else:
-            reward = - 0.1 + dist / 8
+            reward = - 0.1 + dist / 8.0
+            self.n_no_consecutive_move = 0
+
         
         goal_collided = get_mask_components_collided(self.player_car)
 
         if goal_collided is not None and goal_collided.centroid() != ORDER[self.last_goal_reached]:
             reward = REWARD_UNIT
             self.last_goal_reached = (self.last_goal_reached+1)%len(GOALS_MASK_COMPONENTS)
+            reward += self.n_goals_reached * (REWARD_UNIT/15.0)
             self.n_goals_reached += 1
 
         if self.player_car.collide(TRACK_BORDER_MASK) != None or self.n_iter > 1_000 * (self.n_goals_reached+1):

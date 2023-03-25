@@ -10,17 +10,17 @@ import numpy as np
 
 #blue = (50, 153, 213)
 
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
+WHITE = (0, 0, 0)
+BLACK = (255, 255, 255)
 GREEN = (0, 255, 0)
  
-DIS_WIDTH = 600
-DIS_HEIGHT = 600
+DIS_WIDTH = 400.0
+DIS_HEIGHT = 400.0
 
 SNAKE_BLOCK = 10.0
 
-SNAKE_SPEED = 15  # test
-# SNAKE_SPEED = 100 # training
+#SNAKE_SPEED = 15  # test
+SNAKE_SPEED = 200 # training
 
 REWARD_UNIT = 10.0
 
@@ -60,7 +60,7 @@ class SnakeGame():
             pygame.draw.rect(self.dis, BLACK, [x[0], x[1], SNAKE_BLOCK, SNAKE_BLOCK])
     
     def reset(self):
-
+        self.score = 0
         self.direction = ACTIONS['RIGHT']
         self.frame_iteration = 0
         self.game_close = False
@@ -86,58 +86,61 @@ class SnakeGame():
                 point[1] >= DIS_HEIGHT or point[1] < 0 or \
                 point in self.snake_list[:-1]
 
+    def classify_point(self,point):
+        if point[0]<0 or point[0]>=DIS_WIDTH or point[1]<0 or point[1]>=DIS_HEIGHT:
+            return 0 # wall
+        if point in self.snake_list[:-1]:
+            return 1 # snake
+        return 2 # free
     
     def get_state(self):
-        point_sx = [self.x1-SNAKE_BLOCK,self.y1]
-        point_dx = [self.x1+SNAKE_BLOCK,self.y1]
-        point_up = [self.x1,self.y1-SNAKE_BLOCK]
-        point_dw = [self.x1,self.y1+SNAKE_BLOCK]
+        
         
         dir_up = 1 if self.direction == ACTIONS['UP'] else 0
         dir_dw = 1 if self.direction == ACTIONS['DOWN'] else 0
         dir_sx = 1 if self.direction == ACTIONS['LEFT'] else 0
         dir_dx = 1 if self.direction == ACTIONS['RIGHT'] else 0
+
+        if dir_dx == 1:
+            point_left = [self.x1,self.y1-SNAKE_BLOCK]
+            point_right = [self.x1,self.y1+SNAKE_BLOCK]
+            point_front = [self.x1+SNAKE_BLOCK,self.y1]
+        elif dir_dw == 1:
+            point_left = [self.x1+SNAKE_BLOCK,self.y1]
+            point_right = [self.x1-SNAKE_BLOCK,self.y1]
+            point_front = [self.x1,self.y1+SNAKE_BLOCK]
+        elif dir_sx == 1:
+            point_left = [self.x1,self.y1+SNAKE_BLOCK]
+            point_right = [self.x1,self.y1-SNAKE_BLOCK]
+            point_front = [self.x1-SNAKE_BLOCK,self.y1]
+        else:
+            point_left = [self.x1-SNAKE_BLOCK,self.y1]
+            point_right = [self.x1+SNAKE_BLOCK,self.y1]
+            point_front = [self.x1,self.y1-SNAKE_BLOCK]
+        pts = [point_left,point_right,point_front]
         
         return np.array(
-            [   
-                self.foodx,
-                self.foody,
-
-                self.x1,
-                self.y1,
-
-                self.foodx<self.x1,
-                self.foodx>self.x1,
-                self.foody>self.y1,
-                self.foody<self.y1,
-
+            [
+                *[1 if self.classify_point(pt)==0 else 0 for pt in pts],
+                *[1 if self.classify_point(pt)==1 else 0 for pt in pts],
+                *[1 if self.classify_point(pt)==2 else 0 for pt in pts],
                 dir_up,
                 dir_dw,
                 dir_sx,
                 dir_dx,
-
-                # straight
-                (dir_dx and self.is_collision(point_dx) or
-                 dir_up and self.is_collision(point_up) or
-                 dir_dw and self.is_collision(point_dw) or
-                 dir_sx and self.is_collision(point_sx)),
-
-                # right
-                (dir_up and self.is_collision(point_dx) or
-                 dir_dw and self.is_collision(point_sx) or
-                 dir_sx and self.is_collision(point_up) or
-                 dir_dx and self.is_collision(point_dw)),
-
-                # left
-                (dir_up and self.is_collision(point_sx) or
-                 dir_dw and self.is_collision(point_dx) or
-                 dir_sx and self.is_collision(point_dw) or
-                 dir_dx and self.is_collision(point_up)),
-                
-
-            ], 
-                dtype=int
+                self.foodx<self.x1,
+                self.foodx>self.x1,
+                self.foody>self.y1,
+                self.foody<self.y1,
+                self.x1/DIS_WIDTH,
+                self.y1/DIS_HEIGHT,
+                self.foodx/DIS_WIDTH,
+                self.foody/DIS_HEIGHT,
+            ],
+            dtype=np.float32
         )
+        
+        
         
 
     def step(self,action_dir):
@@ -176,10 +179,10 @@ class SnakeGame():
         self.x1 += self.x1_change
         self.y1 += self.y1_change
 
-        if abs(self.x1 - self.foodx) + abs(self.y1-self.foody) < abs(old_x-self.foodx)+abs(old_y-self.foody):
-            reward = REWARD_UNIT/10
-        else:
-            reward = -REWARD_UNIT/10
+        #if abs(self.x1 - self.foodx) + abs(self.y1-self.foody) < abs(old_x-self.foodx)+abs(old_y-self.foody):
+        #    reward = REWARD_UNIT/10
+        #else:
+        #    reward = -REWARD_UNIT/10
 
         self.dis.fill(WHITE)
 
@@ -192,7 +195,7 @@ class SnakeGame():
         if len(self.snake_list) > self.length_of_snake:
             del self.snake_list[0]  
         for x in self.snake_list[:-1]:
-            if x == snake_head or self.frame_iteration > 100 * len(self.snake_list)**2:
+            if x == snake_head or self.frame_iteration > 100 * len(self.score)**2:
                 self.game_close = True
         
         self.draw_snake()
@@ -203,7 +206,8 @@ class SnakeGame():
             reward = REWARD_UNIT
             self.foodx = round(random.randrange(0, DIS_WIDTH - SNAKE_BLOCK) / 10.0) * 10.0
             self.foody = round(random.randrange(0, DIS_HEIGHT - SNAKE_BLOCK) / 10.0) * 10.0
-            self.length_of_snake += 1
+            #self.length_of_snake += 1
+            self.score += 1
 
         self.clock.tick(SNAKE_SPEED)
 

@@ -4,7 +4,7 @@ import torch
 import pygame
 import random
 
-CHECKPOINT_PATH = "../checkpoints/ss/car_target_net.pth"
+CHECKPOINT_PATH = "./car_target_net_50k.pth"
 
 
 env = CarEnv()
@@ -17,10 +17,10 @@ done = False
 env = CarEnv()
 obs = env.reset()
 while not done:
-    if random.random() < 0.1:
-        action = random.randint(0,len(ACTIONS)-1)
-    else:                           
-        action = net.act(obs)
+    #if random.random() < 0.05:
+    #    action = random.randint(0,len(ACTIONS)-1)
+    #else:                           
+    action = net.act(obs)
     obs, _, done = env.step(action)
     
 pygame.quit()

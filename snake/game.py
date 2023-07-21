@@ -2,6 +2,8 @@ import pygame
 import time
 import random
 import numpy as np
+import cv2
+
 
 
 
@@ -10,8 +12,8 @@ import numpy as np
 
 #blue = (50, 153, 213)
 
-WHITE = (0, 0, 0)
-BLACK = (255, 255, 255)
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
 GREEN = (0, 255, 0)
  
 DIS_WIDTH = 400.0
@@ -60,6 +62,8 @@ class SnakeGame():
             pygame.draw.rect(self.dis, BLACK, [x[0], x[1], SNAKE_BLOCK, SNAKE_BLOCK])
     
     def reset(self):
+        self.old_state_1 = None
+        self.old_state_2 = None
         self.score = 0
         self.direction = ACTIONS['RIGHT']
         self.frame_iteration = 0
@@ -94,51 +98,25 @@ class SnakeGame():
         return 2 # free
     
     def get_state(self):
+        img = np.array(pygame.surfarray.array3d(self.dis),dtype=np.float32)
+        # convert to grayscale with 1 channel and [0,1] values, and resize to 40x40
+        img = np.dot(img[...,:3], [0.299, 0.587, 0.114])
+        img = img/255.0
+        # resize with bilinear interpolation
+        img = cv2.resize(img,(40,40),interpolation=cv2.INTER_LINEAR)
+        img = img.reshape(1,40,40)
         
-        
-        dir_up = 1 if self.direction == ACTIONS['UP'] else 0
-        dir_dw = 1 if self.direction == ACTIONS['DOWN'] else 0
-        dir_sx = 1 if self.direction == ACTIONS['LEFT'] else 0
-        dir_dx = 1 if self.direction == ACTIONS['RIGHT'] else 0
 
-        if dir_dx == 1:
-            point_left = [self.x1,self.y1-SNAKE_BLOCK]
-            point_right = [self.x1,self.y1+SNAKE_BLOCK]
-            point_front = [self.x1+SNAKE_BLOCK,self.y1]
-        elif dir_dw == 1:
-            point_left = [self.x1+SNAKE_BLOCK,self.y1]
-            point_right = [self.x1-SNAKE_BLOCK,self.y1]
-            point_front = [self.x1,self.y1+SNAKE_BLOCK]
-        elif dir_sx == 1:
-            point_left = [self.x1,self.y1+SNAKE_BLOCK]
-            point_right = [self.x1,self.y1-SNAKE_BLOCK]
-            point_front = [self.x1-SNAKE_BLOCK,self.y1]
-        else:
-            point_left = [self.x1-SNAKE_BLOCK,self.y1]
-            point_right = [self.x1+SNAKE_BLOCK,self.y1]
-            point_front = [self.x1,self.y1-SNAKE_BLOCK]
-        pts = [point_left,point_right,point_front]
-        
-        return np.array(
-            [
-                *[1 if self.classify_point(pt)==0 else 0 for pt in pts],
-                *[1 if self.classify_point(pt)==1 else 0 for pt in pts],
-                *[1 if self.classify_point(pt)==2 else 0 for pt in pts],
-                dir_up,
-                dir_dw,
-                dir_sx,
-                dir_dx,
-                self.foodx<self.x1,
-                self.foodx>self.x1,
-                self.foody>self.y1,
-                self.foody<self.y1,
-                self.x1/DIS_WIDTH,
-                self.y1/DIS_HEIGHT,
-                self.foodx/DIS_WIDTH,
-                self.foody/DIS_HEIGHT,
-            ],
-            dtype=np.float32
-        )
+        state_1 = img if self.old_state_1 is None else self.old_state_1
+        state_2 = img if self.old_state_2 is None else self.old_state_2
+        ret_img = np.stack([state_2,state_1,img],axis=0)
+        ret_img = np.reshape(ret_img,(3,40,40))
+
+        self.old_state_2 = self.old_state_1
+        self.old_state_1 = img
+
+        return ret_img
+    
         
         
         
@@ -195,7 +173,7 @@ class SnakeGame():
         if len(self.snake_list) > self.length_of_snake:
             del self.snake_list[0]  
         for x in self.snake_list[:-1]:
-            if x == snake_head or self.frame_iteration > 100 * len(self.score)**2:
+            if x == snake_head or self.frame_iteration > 100 * self.score**2:
                 self.game_close = True
         
         self.draw_snake()
@@ -206,7 +184,7 @@ class SnakeGame():
             reward = REWARD_UNIT
             self.foodx = round(random.randrange(0, DIS_WIDTH - SNAKE_BLOCK) / 10.0) * 10.0
             self.foody = round(random.randrange(0, DIS_HEIGHT - SNAKE_BLOCK) / 10.0) * 10.0
-            #self.length_of_snake += 1
+            self.length_of_snake += 1
             self.score += 1
 
         self.clock.tick(SNAKE_SPEED)

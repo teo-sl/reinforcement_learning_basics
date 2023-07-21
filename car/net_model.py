@@ -7,13 +7,11 @@ class Network(nn.Module):
     def __init__(self,env):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(21, 256),
+            nn.Linear(15, 50),
             nn.ReLU(),
-            nn.Linear(256, 128),
+            nn.Linear(50, 100),
             nn.ReLU(),
-            nn.Linear(128, 64),
-            nn.ReLU(),
-            nn.Linear(64,len(ACTIONS) ),
+            nn.Linear(100, 3),
         )
 
     def forward(self, x):
